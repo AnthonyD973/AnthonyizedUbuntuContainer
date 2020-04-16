@@ -1,0 +1,42 @@
+#!/bin/bash -e
+
+THIS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[@]}")" >/dev/null && pwd)"
+DOCKERFILE_DIR="${THIS_SCRIPT_DIR}"
+
+BASE_NAME=anthonyized_ubuntu
+IMAGE_NAME="${BASE_NAME}_image"
+CONTAINER_NAME="${BASE_NAME}_container"
+CONTAINER_BOUND_DIR="/mnt/docker-bind/${CONTAINER_NAME}"
+
+containerExists() {
+    local containerName="${1}"
+    local output="$(docker inspect --format="{{.Id}}" ${CONTAINER_NAME} 2>/dev/null)"
+    [ "${output}" != "" ] && true || false
+}
+
+buildContainer() {
+    cd "${DOCKERFILE_DIR}"
+    docker build -t "${IMAGE_NAME}" .
+}
+
+runContainer() {
+    docker run \
+        -d \
+        --privileged \
+        --mount 'type=bind,src='"${CONTAINER_BOUND_DIR}"',dst='"${CONTAINER_BOUND_DIR}" \
+        --network host \
+        --name "${CONTAINER_NAME}" \
+        "${IMAGE_NAME}" \
+        tail -f /proc/cpuinfo
+}
+
+run() {
+    if ! containerExists "${CONTAINER_NAME}"; then
+        buildContainer
+        # runContainer
+    else
+        echo "Container ${CONTAINER_NAME} aready exists."
+    fi
+}
+
+run "$@"
